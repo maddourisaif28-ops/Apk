@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account information and profile details",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["client", "artisan"] },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "role", "createdAt"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "Registered vehicle, appliance, or household fixture with maintenance tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "brand": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "integer" },
+        "hoursOrMileage": { "type": "string" },
+        "lastMaintenanceDate": { "type": "string", "format": "date-time" },
+        "nextMaintenanceTip": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "type", "createdAt"]
+    },
+    "Artisan": {
+      "title": "Artisan",
+      "description": "Local technician or craftsman profile in the marketplace",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "category": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "integer" },
+        "isAvailable": { "type": "boolean" },
+        "locationName": { "type": "string" },
+        "experienceYears": { "type": "integer" },
+        "hourlyRate": { "type": "string" },
+        "bio": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "category", "rating", "isAvailable", "createdAt"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Maintenance booking request between client and artisan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "artisanId": { "type": "string" },
+        "artisanName": { "type": "string" },
+        "serviceType": { "type": "string" },
+        "scheduledDate": { "type": "string" },
+        "timeSlot": { "type": "string" },
+        "address": { "type": "string" },
+        "problemDescription": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "clientId", "artisanId", "serviceType", "status", "createdAt"]
+    },
+    "Diagnostic": {
+      "title": "Diagnostic",
+      "description": "Smart AI diagnosis record for a mechanical or electrical issue",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "problemDescription": { "type": "string" },
+        "category": { "type": "string" },
+        "probableCause": { "type": "string" },
+        "severity": { "type": "string", "enum": ["low", "medium", "urgent"] },
+        "estimatedCost": { "type": "string" },
+        "recommendedSteps": { "type": "string" },
+        "requiresArtisan": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "problemDescription", "probableCause", "severity", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile documents keyed by Firebase Auth UID"
+    },
+    "/users/{userId}/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/Asset" },
+      "description": "Registered vehicles and household equipment belonging to user"
+    },
+    "/artisans/{artisanId}": {
+      "schema": { "$ref": "#/entities/Artisan" },
+      "description": "Marketplace craftsman directory"
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "Service appointments created by clients"
+    },
+    "/users/{userId}/diagnostics/{diagnosticId}": {
+      "schema": { "$ref": "#/entities/Diagnostic" },
+      "description": "Saved AI breakdown diagnostics history for user"
+    }
+  }
+}

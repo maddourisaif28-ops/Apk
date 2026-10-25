@@ -1,0 +1,6 @@
+{
+  "name": "صيانتها",
+  "description": "تطبيق يربط بين الأفراد والحرفيين المحليين مع تشخيص ذكي للأعطال بالذكاء الاصطناعي وسجل رقمي للأصول",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

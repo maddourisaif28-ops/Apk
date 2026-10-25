@@ -1,0 +1,154 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             (data.role in ['client', 'artisan']) &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 100));
+    }
+
+    function isValidAsset(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 120 &&
+             data.type is string && data.type.size() <= 50 &&
+             (!('brand' in data) || (data.brand is string && data.brand.size() <= 50)) &&
+             (!('model' in data) || (data.model is string && data.model.size() <= 50)) &&
+             (!('year' in data) || (data.year is int && data.year >= 1950 && data.year <= 2100)) &&
+             (!('hoursOrMileage' in data) || (data.hoursOrMileage is string && data.hoursOrMileage.size() <= 50)) &&
+             (!('nextMaintenanceTip' in data) || (data.nextMaintenanceTip is string && data.nextMaintenanceTip.size() <= 200)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500));
+    }
+
+    function isValidArtisan(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.category is string && data.category.size() <= 50 &&
+             data.rating is number && data.rating >= 0 && data.rating <= 5 &&
+             data.isAvailable is bool &&
+             (!('reviewCount' in data) || data.reviewCount is int) &&
+             (!('experienceYears' in data) || data.experienceYears is int) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('locationName' in data) || (data.locationName is string && data.locationName.size() <= 100)) &&
+             (!('hourlyRate' in data) || (data.hourlyRate is string && data.hourlyRate.size() <= 50)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp && data.createdAt <= request.time));
+    }
+
+    function isValidBooking(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.clientId is string && data.clientId.size() <= 128 &&
+             data.artisanId is string && data.artisanId.size() <= 128 &&
+             data.serviceType is string && data.serviceType.size() <= 100 &&
+             (data.status in ['pending', 'confirmed', 'completed', 'cancelled']) &&
+             (!('clientName' in data) || (data.clientName is string && data.clientName.size() <= 100)) &&
+             (!('clientPhone' in data) || (data.clientPhone is string && data.clientPhone.size() <= 30)) &&
+             (!('artisanName' in data) || (data.artisanName is string && data.artisanName.size() <= 100)) &&
+             (!('scheduledDate' in data) || (data.scheduledDate is string && data.scheduledDate.size() <= 50)) &&
+             (!('timeSlot' in data) || (data.timeSlot is string && data.timeSlot.size() <= 50)) &&
+             (!('address' in data) || (data.address is string && data.address.size() <= 200)) &&
+             (!('problemDescription' in data) || (data.problemDescription is string && data.problemDescription.size() <= 1000));
+    }
+
+    function isValidDiagnostic(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.problemDescription is string && data.problemDescription.size() <= 1000 &&
+             data.probableCause is string && data.probableCause.size() <= 1000 &&
+             (data.severity in ['low', 'medium', 'urgent']) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 50)) &&
+             (!('estimatedCost' in data) || (data.estimatedCost is string && data.estimatedCost.size() <= 100)) &&
+             (!('recommendedSteps' in data) || (data.recommendedSteps is string && data.recommendedSteps.size() <= 1000)) &&
+             (!('requiresArtisan' in data) || data.requiresArtisan is bool);
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User profile: only the user themselves can read and write
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       isValidUserProfile(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming());
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+
+      // Assets subcollection
+      match /assets/{assetId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         isValidAsset(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidAsset(incoming());
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Diagnostics history subcollection
+      match /diagnostics/{diagnosticId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         isValidDiagnostic(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidDiagnostic(incoming());
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // Marketplace artisans: public catalog for signed-in users
+    match /artisans/{artisanId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidArtisan(incoming());
+      allow delete: if false;
+    }
+
+    // Bookings: visible and updatable by the client or the artisan
+    match /bookings/{bookingId} {
+      allow get, list: if isSignedIn() && (resource.data.clientId == request.auth.uid || resource.data.artisanId == request.auth.uid);
+      allow create: if isSignedIn() &&
+                       incoming().clientId == request.auth.uid &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       isValidBooking(incoming());
+      allow update: if isSignedIn() &&
+                       (existing().clientId == request.auth.uid || existing().artisanId == request.auth.uid) &&
+                       incoming().clientId == existing().clientId &&
+                       incoming().artisanId == existing().artisanId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidBooking(incoming());
+      allow delete: if isSignedIn() && existing().clientId == request.auth.uid;
+    }
+  }
+}
